@@ -1,0 +1,110 @@
+name: Release
+
+# Push a tag like v1.2.0 to publish: checks and tests run, the site is built with the tag stamped
+# into the service worker (so installed phones pick up the new version), deployed to GitHub Pages,
+# and a GitHub Release is created with the built site as a zip.
+#
+# Run it by hand (Actions -> Release -> Run workflow) on main to redeploy the site without a
+# release; the build is then versioned "<branch>-<short sha>" and no GitHub Release is made.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: read # configure-pages reads the Pages site config (fails early if Pages is not set up)
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="$GITHUB_REF_NAME"
+          else
+            version="${GITHUB_REF_NAME//\//-}-${GITHUB_SHA::7}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Version: $version"
+      - name: Static checks
+        run: node scripts/check.mjs
+      - name: Unit tests
+        run: node --test
+      - name: Build
+        run: node scripts/build.mjs "$VERSION"
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - name: Zip the site
+        run: cd _site && zip -qr "../nitrox-fill-${VERSION}.zip" .
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: site-zip
+          path: nitrox-fill-${{ steps.version.outputs.version }}.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # One Pages deployment at a time. Only this job is serialised, so a queued tag's
+    # build and GitHub Release are never cancelled by a newer run.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  release:
+    needs: [build, deploy]
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: site-zip
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          ZIP: nitrox-fill-${{ needs.build.outputs.version }}.zip
+        run: |
+          test -f "$ZIP"
+          # Re-running the workflow for a tag replaces the zip instead of failing on the existing release.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            prerelease=""
+            case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+            gh release create "$TAG" "$ZIP" --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "$TAG" --generate-notes $prerelease
+          fi

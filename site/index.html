@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nitrox Fill Planner</title>
+<meta name="description" content="Nitrox blending calculator for partial-pressure and continuous filling.">
+<meta name="theme-color" content="#12324A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nitrox Fill">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<style>
+@font-face{font-family:"Barlow";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/barlow-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:500;font-display:swap;src:url(fonts/barlow-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/barlow-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:500;font-display:swap;src:url(fonts/barlow-condensed-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/barlow-condensed-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-latin-700-normal.woff2) format("woff2")}
+:root{
+  --bg:#E6ECEE; --panel:#F7FAFA; --ink:#12324A; --muted:#55707F; --line:#C5D2D8;
+  --o2:#FFFFFF; --o2edge:#9FB3BD; --nx-y:#F2C230; --nx-g:#2E8B57; --start:#8FA6B3; --air:#2B3A44;
+  --warn-bg:#FFF2D6; --warn-ink:#7A4A00; --bad-bg:#FBE0DC; --bad-ink:#8A1F11; --ok:#2E8B57;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1D27; --panel:#15293A; --ink:#E3EDF2; --muted:#93AAB7; --line:#2A4256;
+    --o2:#E9F0F3; --o2edge:#6E8796; --start:#5D7686; --air:#0A141B;
+    --warn-bg:#3A2E10; --warn-ink:#F6D38A; --bad-bg:#3D1A16; --bad-ink:#F4B0A6; --ok:#5CC48B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1D27; --panel:#15293A; --ink:#E3EDF2; --muted:#93AAB7; --line:#2A4256;
+  --o2:#E9F0F3; --o2edge:#6E8796; --start:#5D7686; --air:#0A141B;
+  --warn-bg:#3A2E10; --warn-ink:#F6D38A; --bad-bg:#3D1A16; --bad-ink:#F4B0A6; --ok:#5CC48B;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Barlow",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 40px}
+h1{font:700 2.1rem/1.05 "Barlow Condensed","Arial Narrow",sans-serif;margin:4px 0 4px;letter-spacing:.01em}
+.sub{color:var(--muted);margin:0 0 20px;max-width:60ch}
+.grid{display:grid;gap:16px}
+@media(min-width:760px){.grid{grid-template-columns:1fr 1fr}}
+section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+h2{font:600 1.25rem/1.2 "Barlow Condensed","Arial Narrow",sans-serif;margin:0 0 12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.field{position:relative}
+input[type=number]{width:100%;font:600 1.35rem "Barlow Condensed","Arial Narrow",sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 44px 8px 12px;-moz-appearance:textfield}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.unit{position:absolute;right:12px;bottom:11px;color:var(--muted);font-size:.9rem;pointer-events:none}
+input:focus-visible,button:focus-visible{outline:3px solid var(--nx-y);outline-offset:2px}
+.group-title{font-weight:600;font-size:.95rem;margin:4px 0 8px}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);margin:4px 0 12px;cursor:pointer}
+.toggle b{display:block;font-weight:600}
+.toggle small{color:var(--muted)}
+.switch{flex:none;width:52px;height:30px;border-radius:15px;background:var(--line);position:relative;border:0;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.switch[aria-checked="true"]{background:var(--nx-g)}
+.switch[aria-checked="true"]::after{transform:translateX(22px)}
+.hidden{display:none}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}
+.presets button{font:500 .9rem "Barlow",sans-serif;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer}
+.presets button:hover{border-color:var(--ink)}
+
+.plan{display:flex;gap:16px;align-items:stretch}
+.tank{flex:none;width:84px;display:flex;flex-direction:column;align-items:center}
+.valve{width:22px;height:16px;background:var(--muted);border-radius:4px 4px 0 0}
+.neck{width:34px;height:10px;background:var(--muted)}
+.body{position:relative;width:76px;flex:1;min-height:300px;border:3px solid var(--ink);border-radius:30px 30px 18px 18px;overflow:hidden;background:var(--bg)}
+.band{position:absolute;left:0;right:0;top:18px;height:22px;background:repeating-linear-gradient(90deg,var(--nx-y) 0 50%,var(--nx-g) 50% 100%);opacity:.9;z-index:2;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.seg{position:absolute;left:0;right:0;transition:height .35s ease,bottom .35s ease}
+.seg.start{background:var(--start)}
+.seg.o2{background:var(--o2);border-top:1px dashed var(--o2edge);border-bottom:1px dashed var(--o2edge)}
+.seg.top{background:var(--nx-g)}
+.seg.top.air{background:var(--air)}
+.mark{position:absolute;left:0;right:0;border-top:1px solid var(--ink);opacity:.25;z-index:1}
+.steps{flex:1;min-width:0;margin:0;padding:0;list-style:none;counter-reset:s}
+.steps li{position:relative;padding:0 0 14px 38px;counter-increment:s}
+.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--panel);font:700 .95rem/26px "Barlow Condensed",sans-serif;text-align:center}
+.steps .what{font-weight:600}
+.big{font:700 1.7rem/1.1 "Barlow Condensed","Arial Narrow",sans-serif}
+.steps .gauge{color:var(--muted);font-size:.9rem}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:baseline;border:1px solid var(--o2edge)}
+.result{border-top:1px solid var(--line);padding-top:12px;margin-top:4px;display:flex;flex-wrap:wrap;gap:6px 20px}
+.result div{min-width:90px}
+.result span{display:block;font-size:.8rem;color:var(--muted)}
+.result b{font:600 1.2rem "Barlow Condensed",sans-serif}
+.note{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:.92rem}
+.note.warn{background:var(--warn-bg);color:var(--warn-ink)}
+.note.bad{background:var(--bad-bg);color:var(--bad-ink)}
+.compare{margin-top:16px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cmp > div{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.cmp span{display:block;font-size:.85rem;color:var(--muted)}
+.save{margin-top:10px;font-weight:600;color:var(--ok)}
+footer{color:var(--muted);font-size:.85rem;margin-top:20px;max-width:70ch}
+footer .ver{display:block;margin-top:8px;font-size:.78rem;opacity:.8}
+@media (prefers-reduced-motion:reduce){.seg,.switch,.switch::after{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Nitrox fill planner</h1>
+  <p class="sub">Partial-pressure blending with pure O₂, topped with air or with nitrox from a continuous blender. Uses what’s already in the cylinder.</p>
+
+  <div class="grid">
+    <section aria-labelledby="in-h">
+      <h2 id="in-h">Cylinder</h2>
+      <div class="group-title">In the cylinder now</div>
+      <div class="row">
+        <div class="field"><label for="ps">Pressure</label><input id="ps" type="number" inputmode="decimal" value="50" min="0"><span class="unit">bar</span></div>
+        <div class="field"><label for="fs">O₂ content</label><input id="fs" type="number" inputmode="decimal" value="32" min="0" max="100" step="0.1"><span class="unit">%</span></div>
+      </div>
+      <div class="group-title">Target fill</div>
+      <div class="row">
+        <div class="field"><label for="pt">Pressure</label><input id="pt" type="number" inputmode="decimal" value="200" min="1"><span class="unit">bar</span></div>
+        <div class="field"><label for="ft">O₂ content</label><input id="ft" type="number" inputmode="decimal" value="50" min="21" max="100" step="0.1"><span class="unit">%</span></div>
+      </div>
+      <div class="presets" aria-label="Target mix presets">
+        <button type="button" data-ft="32">EAN32</button>
+        <button type="button" data-ft="36">EAN36</button>
+        <button type="button" data-ft="40">EAN40</button>
+        <button type="button" data-ft="50">EAN50</button>
+        <button type="button" data-ft="80">EAN80</button>
+      </div>
+
+      <div class="toggle" id="cbToggle">
+        <div><b>Continuous blending</b><small>Compressor delivers nitrox up to a set %</small></div>
+        <button type="button" class="switch" id="cb" role="switch" aria-checked="true" aria-label="Continuous blending"></button>
+      </div>
+      <div id="cbFields" class="row">
+        <div class="field"><label for="fmax">Max from compressor</label><input id="fmax" type="number" inputmode="decimal" value="40" min="21" max="40" step="0.1"><span class="unit">%</span></div>
+        <div class="field"><label for="bank">O₂ bank (optional)</label><input id="bank" type="number" inputmode="decimal" placeholder="—" min="0"><span class="unit">bar</span></div>
+      </div>
+      <div id="bankOnly" class="row hidden">
+        <div class="field"><label for="bank2">O₂ bank (optional)</label><input id="bank2" type="number" inputmode="decimal" placeholder="—" min="0"><span class="unit">bar</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="plan-h" aria-live="polite">
+      <h2 id="plan-h">Fill plan</h2>
+      <div class="plan">
+        <div class="tank" aria-hidden="true">
+          <div class="valve"></div><div class="neck"></div>
+          <div class="body" id="tankBody">
+            <div class="band"></div>
+            <div class="seg start" id="segStart"></div>
+            <div class="seg o2" id="segO2"></div>
+            <div class="seg top" id="segTop"></div>
+          </div>
+        </div>
+        <ol class="steps" id="steps"></ol>
+      </div>
+      <div class="result" id="result"></div>
+      <div id="notes"></div>
+    </section>
+  </div>
+
+  <section class="compare" id="compare" aria-labelledby="cmp-h">
+    <h2 id="cmp-h">O₂ used: air top vs continuous top</h2>
+    <div class="cmp" id="cmpBody"></div>
+    <div class="save" id="saveLine"></div>
+  </section>
+
+  <footer>Calculated with the ideal gas law, so real fills land slightly off at high pressure; let the cylinder cool, top up to target and always analyse before the cylinder leaves the station. Adding pure O₂ needs an O₂-clean cylinder and valve. Air is taken as 20.9 % O₂.<small class="ver">Version __APP_VERSION__</small></footer>
+</main>
+
+<script>
+const AIR = 0.209, FO2 = 1.0, EPS = 1e-6;
+const $ = id => document.getElementById(id);
+let continuous = true;
+
+function num(id){ const v = parseFloat($(id).value); return isNaN(v) ? null : v; }
+function r1(x){ return Math.round(x*10)/10; }
+function fmtBar(x){ return (Math.round(x*10)/10).toLocaleString(undefined,{maximumFractionDigits:1}); }
+
+// Returns a plan: bleedTo, o2 (bar of pure O2), topF (fraction), topBar
+function plan(Ps, Fs, Pt, Ft, Fmax){
+  const p = {bleedTo:null, o2:0, topF:AIR, topBar:0, error:null};
+  if (Ft < AIR - EPS) { p.error = "Targets below 20.9 % O₂ can’t be made with O₂ and air."; return p; }
+  if (Ft > FO2 + EPS) { p.error = "Target O₂ content can’t be above 100 %."; return p; }
+  if (Fmax < AIR) Fmax = AIR;
+  let P0 = Ps;
+  if (Ps > Pt + EPS) { P0 = Pt; p.bleedTo = Pt; }
+
+  const O2have = P0*Fs, O2want = Pt*Ft, room = Pt - P0;
+  const need = room > EPS ? (O2want - O2have)/room : (Fs < Ft - EPS ? Infinity : (Fs > Ft + EPS ? -Infinity : null));
+
+  if (need === null) return p; // already on target
+
+  if (need >= AIR - EPS && need <= Fmax + EPS) {
+    // top gas alone does it
+    p.topF = Math.max(AIR, Math.min(need, Fmax)); p.topBar = room; return p;
+  }
+  if (need > Fmax) {
+    let x = (O2want - O2have - room*Fmax)/(FO2 - Fmax);
+    if (x <= room + EPS) { p.o2 = x; p.topF = Fmax; p.topBar = room - x; return p; }
+    // too much low-O2 gas inside: bleed, then O2 only
+    if (Fs >= FO2 - EPS) { p.error = "Can’t reach the target from this start."; return p; }
+    const Pb = Pt*(FO2 - Ft)/(FO2 - Fs);
+    p.bleedTo = Pb; p.o2 = Pt - Pb; p.topBar = 0; p.topF = Fmax; return p;
+  }
+  // need < AIR: start gas too rich, bleed then top with air
+  const Pb = Pt*(Ft - AIR)/(Fs - AIR);
+  p.bleedTo = Math.max(0, Pb); p.o2 = 0; p.topF = AIR; p.topBar = Pt - p.bleedTo; return p;
+}
+
+function render(){
+  const Ps = num('ps') ?? 0, Fs = (num('fs') ?? 20.9)/100, Pt = num('pt'), Ft = (num('ft') ?? 0)/100;
+  const FmaxIn = (num('fmax') ?? 40)/100;
+  const bank = continuous ? num('bank') : num('bank2');
+  const steps = $('steps'), notes = $('notes'), result = $('result');
+  steps.innerHTML = ''; notes.innerHTML = ''; result.innerHTML = '';
+
+  if (!Pt || Pt <= 0) { notes.innerHTML = '<div class="note bad">Enter a target pressure above 0 bar.</div>'; drawTank(0,0,0,0,1); return; }
+  if ($('ps').value.trim() === '' || $('fs').value.trim() === '') { notes.innerHTML = '<div class="note bad">Enter the start pressure and O₂ content (0 bar for an empty cylinder).</div>'; drawTank(0,0,0,0,Pt); $('compare').classList.add('hidden'); return; }
+  if (Ps < 0) { notes.innerHTML = '<div class="note bad">Start pressure can’t be negative.</div>'; drawTank(0,0,0,0,Pt); $('compare').classList.add('hidden'); return; }
+  if (Fs < 0 || Fs > 1) { notes.innerHTML = '<div class="note bad">Start O₂ content must be between 0 and 100 %.</div>'; return; }
+
+  const Fmax = continuous ? Math.min(Math.max(FmaxIn, AIR), 1) : AIR;
+  const p = plan(Ps, Fs, Pt, Ft, Fmax);
+  if (p.error) { notes.innerHTML = `<div class="note bad">${p.error}</div>`; drawTank(0,0,0,0,Pt); $('compare').classList.add('hidden'); return; }
+
+  const startP = p.bleedTo !== null ? p.bleedTo : Ps;
+  const afterO2 = startP + p.o2;
+  const li = [];
+  if (p.bleedTo !== null && p.bleedTo < Ps - 0.05) {
+    li.push(`<li><div class="what">Bleed down</div><div class="big">to ${fmtBar(p.bleedTo)} bar</div><div class="gauge">Release ${fmtBar(Ps - p.bleedTo)} bar of the old ${r1(Fs*100)} % gas</div></li>`);
+  }
+  if (p.o2 > 0.05) {
+    li.push(`<li><div class="what"><span class="sw" style="background:var(--o2)"></span>Add pure O₂</div><div class="big">${fmtBar(p.o2)} bar</div><div class="gauge">Stop when the gauge reads ${fmtBar(afterO2)} bar</div></li>`);
+  }
+  if (p.topBar > 0.05) {
+    const isAir = Math.abs(p.topF - AIR) < 0.0005;
+    const label = isAir ? 'Top up with air' : `Top up with ${r1(p.topF*100)} % nitrox`;
+    const sw = isAir ? 'var(--air)' : 'var(--nx-g)';
+    const extra = (!isAir && continuous) ? ` · set the blender to ${r1(p.topF*100)} %` : '';
+    li.push(`<li><div class="what"><span class="sw" style="background:${sw}"></span>${label}</div><div class="big">${fmtBar(p.topBar)} bar</div><div class="gauge">Fill to ${fmtBar(Pt)} bar${extra}</div></li>`);
+  }
+  if (!li.length) li.push('<li><div class="what">Nothing to do</div><div class="gauge">The cylinder is already at the target.</div></li>');
+  steps.innerHTML = li.join('');
+
+  const finalF = (startP*Fs + p.o2*FO2 + p.topBar*p.topF)/Pt;
+  const mod14 = (1.4/finalF - 1)*10, mod16 = (1.6/finalF - 1)*10;
+  result.innerHTML = `<div><span>Final mix</span><b>${r1(finalF*100)} % O₂</b></div>
+    <div><span>MOD at 1.4</span><b>${Math.floor(mod14)} m</b></div>
+    <div><span>MOD at 1.6</span><b>${Math.floor(mod16)} m</b></div>`;
+
+  const n = [];
+  if (p.bleedTo !== null && p.bleedTo < Ps - 0.05) n.push(['warn','The gas already in the cylinder can’t be used fully for this target, so some has to be released first.']);
+  if (bank !== null && p.o2 > 0.05 && bank < afterO2 + 5) n.push(['bad', `The O₂ bank at ${fmtBar(bank)} bar can’t decant up to ${fmtBar(afterO2)} bar. Use a fuller bank or cascade from a lower bank first.`]);
+  if (continuous && FmaxIn > 0.4) n.push(['warn','Most continuous blenders are limited to 40 % O₂ at the compressor intake. Check your system’s rating.']);
+  if (finalF > 0.4 && p.o2 <= 0.05 && Fs > 0.4) n.push(['warn','This cylinder holds more than 40 % O₂. Keep it in O₂ service.']);
+  notes.innerHTML = n.map(([c,t]) => `<div class="note ${c}">${t}</div>`).join('');
+
+  drawTank(startP, p.o2, p.topBar, p.topF, Pt);
+
+  // comparison
+  const cmp = $('compare');
+  if (continuous) {
+    const pa = plan(Ps, Fs, Pt, Ft, AIR);
+    if (pa.error) { cmp.classList.add('hidden'); return; }
+    cmp.classList.remove('hidden');
+    $('cmpBody').innerHTML = `<div><span>O₂ + air top</span><b class="big">${fmtBar(pa.o2)} bar</b></div>
+      <div><span>O₂ + ${r1(Fmax*100)} % top</span><b class="big">${fmtBar(p.o2)} bar</b></div>`;
+    const saved = pa.o2 - p.o2;
+    $('saveLine').textContent = saved > 0.05
+      ? `Continuous blending saves ${fmtBar(saved)} bar of O₂ from the bank${pa.o2 > 0 ? ` (${Math.round(saved/pa.o2*100)} % less)` : ''}.`
+      : 'No O₂ saving for this fill.';
+  } else cmp.classList.add('hidden');
+}
+
+function drawTank(start, o2, top, topF, Pt){
+  const max = Math.max(Pt, start + o2 + top, 1);
+  const pct = v => (v/max*88) + '%'; // leave headroom for the shoulder
+  $('segStart').style.bottom = '0'; $('segStart').style.height = pct(start);
+  $('segO2').style.bottom = pct(start); $('segO2').style.height = pct(o2);
+  $('segTop').style.bottom = pct(start + o2); $('segTop').style.height = pct(top);
+  $('segTop').classList.toggle('air', Math.abs(topF - AIR) < 0.0005);
+}
+
+function setContinuous(on){
+  continuous = on;
+  $('cb').setAttribute('aria-checked', on);
+  $('cbFields').classList.toggle('hidden', !on);
+  $('bankOnly').classList.toggle('hidden', on);
+  if (on) $('bank').value = $('bank2').value; else $('bank2').value = $('bank').value;
+  render();
+}
+$('cbToggle').addEventListener('click', () => setContinuous(!continuous));
+document.querySelectorAll('.presets button').forEach(b => b.addEventListener('click', () => { $('ft').value = b.dataset.ft; render(); }));
+['ps','fs','pt','ft','fmax','bank','bank2'].forEach(id => $(id).addEventListener('input', render));
+render();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  // A new release activates at once (skipWaiting + clients.claim in sw.js); reload once onto it.
+  // Only when this page was already controlled (not on first install), at most once, and never under
+  // someone who has started typing: then wait until the app is put in the background.
+  const sw = navigator.serviceWorker, hadController = !!sw.controller;
+  let reloading = false, touched = false;
+  ["input", "click"].forEach(t => document.addEventListener(t, () => { touched = true; }, true));
+  const reload = () => { if (!reloading) { reloading = true; location.reload(); } };
+  sw.addEventListener("controllerchange", () => {
+    if (!hadController || reloading) return;
+    if (!touched || document.visibilityState === "hidden") reload();
+    else document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") reload(); });
+  });
+  window.addEventListener("load", () => {
+    // updateViaCache "none": update checks never get sw.js from the HTTP cache (GitHub Pages sends max-age=600).
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+      // An installed app is resumed far more often than it is reloaded, so check for a release on resume too.
+      let lastCheck = Date.now();
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && Date.now() - lastCheck > 5 * 60 * 1000) {
+          lastCheck = Date.now();
+          reg.update().catch(() => {});
+        }
+      });
+    }).catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

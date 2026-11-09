@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Static checks
+        run: node scripts/check.mjs
+      # Bare `node --test` uses Node's default patterns (test/**, *.test.mjs, ...) and exits 0 when
+      # there are no test files; `node --test test/` would fail if test/ is missing.
+      - name: Unit tests
+        run: node --test
+      - name: Build
+        run: node scripts/build.mjs "ci-${GITHUB_SHA::7}"

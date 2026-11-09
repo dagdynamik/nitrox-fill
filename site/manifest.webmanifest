@@ -1,0 +1,21 @@
+{
+  "id": "nitrox-fill/",
+  "name": "Nitrox Fill Planner",
+  "short_name": "Nitrox Fill",
+  "description": "Nitrox blending calculator for partial-pressure and continuous filling.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E6ECEE",
+  "theme_color": "#12324A",
+  "categories": ["utilities", "sports"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
